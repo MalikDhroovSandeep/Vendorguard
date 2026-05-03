@@ -1,6 +1,8 @@
 # VendorGuard
 
-**AI-Driven Vendor Reliability & Risk Scoring System**
+**AI-assisted vendor management, risk scoring, and procurement workflow platform**
+
+VendorGuard is a full-stack Next.js application for vendor onboarding, KYC handling, invoice and dispute workflows, role-based dashboards, and AI-assisted vendor risk analysis. The project combines a web app, Prisma-backed persistence, Cloudinary file storage, authentication, and Python ML scripts for model training and prediction.
 
 ---
 
@@ -20,21 +22,20 @@
 
 ## Introduction
 
-VendorGuard is a web-based procurement and vendor management platform designed to help organizations manage the complete vendor lifecycle while proactively identifying vendor-related risks using Artificial Intelligence.
+VendorGuard is built to centralize the vendor lifecycle in one place: registration, authentication, KYC review, order and invoice handling, dispute resolution, notifications, reporting, and AI-driven risk insight.
 
-The system centralizes vendor onboarding, KYC verification, purchase order management, invoicing, dispute handling, and multiple AI-driven analytics modules. VendorGuard aims to improve transparency, reduce operational risk, and support data-driven procurement decisions.
+The app is structured for a clean academic-to-production path. The web layer is implemented with Next.js App Router, the database layer uses Prisma, the AI/ML layer is handled through Python scripts in the `ml/` directory, and file uploads are routed through Cloudinary.
 
 ---
 
 ## Objectives
 
 - Provide a centralized platform for end-to-end vendor lifecycle management
-- Automate vendor onboarding and KYC verification workflows
-- Enable efficient purchase order and invoice management
-- Implement AI-driven risk assessment and performance prediction
-- Detect anomalies and potential fraud patterns in vendor activities
-- Support data-driven decision making through analytics dashboards
-- Ensure secure role-based access control for different user types
+- Support secure authentication and role-based access control
+- Automate vendor onboarding, KYC review, and document handling
+- Track orders, invoices, disputes, returns, and notifications in one workflow
+- Surface AI-driven vendor risk and trend insights for better decisions
+- Keep the project easy to run locally and easy to present publicly on GitHub
 
 ---
 
@@ -44,21 +45,23 @@ The system centralizes vendor onboarding, KYC verification, purchase order manag
 
 | Module | Description |
 |--------|-------------|
-| **Authentication & Authorization** | Secure login with role-based access control |
+| **Authentication & Authorization** | Auth.js/NextAuth-based login with role-based access control |
 | **Vendor Registration & Profile Management** | Complete vendor onboarding and profile maintenance |
 | **KYC Verification Workflow** | Document upload, verification, and approval process |
 | **Purchase Order & Delivery Tracking** | Create, manage, and track purchase orders |
 | **Invoice & Payment Management** | Invoice upload and payment status tracking |
 | **Dispute Management** | Raise, monitor, and resolve vendor disputes |
 | **Analytics Dashboard** | Role-based reporting and analytics views |
+| **AI Insights** | Vendor risk scoring, trend prediction, and anomaly detection |
 
 ### Additional Features
 
 - Automated alerts for high-risk vendors
 - AI-generated recommendations for vendor monitoring
-- Audit trail for all vendor-related actions
+- Audit trail for key vendor-related actions
 - Secure document storage for KYC and invoices
-- Scalable modular architecture
+- ML training and prediction scripts under `ml/scripts/`
+- Modular route-based architecture that keeps the codebase organized
 
 ---
 
@@ -147,21 +150,21 @@ VendorGuard integrates three AI/ML modules designed to enhance vendor management
 
 ## System Architecture
 
-VendorGuard follows a layered architecture pattern with clear separation of concerns:
+VendorGuard follows a layered architecture with a clear separation between UI, server routes, persistence, file storage, and ML utilities:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                   PRESENTATION LAYER                        │
-│              (Next.js + Tailwind CSS Frontend)              │
+│             (Next.js App Router + CSS/Tailwind)             │
 ├─────────────────────────────────────────────────────────────┤
-│                  BUSINESS LOGIC LAYER                       │
-│            (Node.js + Express.js REST APIs)                 │
+│                  APPLICATION LAYER                          │
+│           (Next.js API Routes / Server Actions)             │
 ├─────────────────────────────────────────────────────────────┤
 │                     AI/ML LAYER                             │
-│         (Python + Scikit-learn ML Services)                 │
+│         (Python scripts for training and prediction)        │
 ├─────────────────────────────────────────────────────────────┤
 │                      DATA LAYER                             │
-│              (PostgreSQL / MongoDB Database)                │
+│               (PostgreSQL via Prisma ORM)                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -171,6 +174,7 @@ VendorGuard follows a layered architecture pattern with clear separation of conc
 - **Separation of Concerns:** Clear boundaries between presentation, business logic, AI/ML, and data layers
 - **Secure Access Control:** Role-based permissions enforced at the API level
 - **Scalability:** Modular design supports horizontal scaling of individual components
+- **Practical Dev Setup:** Local secrets stay in `.env`, with `.env.example` provided for onboarding
 
 ---
 
@@ -181,26 +185,34 @@ VendorGuard follows a layered architecture pattern with clear separation of conc
 |------------|---------|
 | Next.js | React framework for server-side rendering and routing |
 | Tailwind CSS | Utility-first CSS framework for styling |
+| TypeScript | Type-safe application code |
 
 ### Backend
 | Technology | Purpose |
 |------------|---------|
-| Node.js | JavaScript runtime environment |
-| Express.js | Web application framework for REST APIs |
-| REST APIs | API architecture for client-server communication |
+| Next.js API Routes | Server-side endpoints for application workflows |
+| Prisma | Type-safe ORM and database access layer |
+| Auth.js / NextAuth | Authentication and session handling |
 
 ### Database
 | Technology | Purpose |
 |------------|---------|
-| PostgreSQL / MongoDB | Primary database for data persistence |
+| PostgreSQL | Primary database for data persistence |
 
 ### AI/ML
 | Technology | Purpose |
 |------------|---------|
 | Python | Programming language for ML development |
 | Scikit-learn | Machine learning library for model implementation |
-| Data Preprocessing Pipelines | Data cleaning and feature engineering |
-| Model Evaluation | Scoring logic and performance metrics |
+| Pandas / NumPy | Data preparation and feature work |
+| Model Training Scripts | Training and inference utilities in `ml/scripts/` |
+
+### Storage and Integrations
+| Technology | Purpose |
+|------------|---------|
+| Cloudinary | File storage for uploads and documents |
+| Nodemailer | Email delivery for notifications and password reset flows |
+| Python subprocess runner | Bridges the web app to ML scripts |
 
 ---
 
@@ -210,47 +222,46 @@ VendorGuard follows a layered architecture pattern with clear separation of conc
 
 - Node.js (v18 or higher)
 - Python (v3.9 or higher)
-- PostgreSQL or MongoDB
+- PostgreSQL
 - npm or yarn package manager
 
-### Frontend Setup
+### Environment Setup
+
+1. Copy the example env file:
 
 ```bash
-# Navigate to project directory
-cd vendorguard
+copy .env.example .env
+```
 
+2. Fill in your local values for:
+
+- `DATABASE_URL`
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL`
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` if you enable Google login
+- `FACEBOOK_CLIENT_ID` and `FACEBOOK_CLIENT_SECRET` if you enable Facebook login
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `EMAIL_FROM`
+
+### Application Setup
+
+```bash
 # Install dependencies
 npm install
+
+# Run database generation and migrations if needed
+npx prisma generate
+npx prisma migrate dev
 
 # Run development server
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:3000`
+The app will be available at `http://localhost:3000`
 
-### Backend Setup
-
-```bash
-# Navigate to backend directory
-cd backend
-
-# Install dependencies
-npm install
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env with your database credentials
-
-# Run development server
-npm run dev
-```
-
-### AI/ML Service Setup
+### ML Setup
 
 ```bash
-# Navigate to AI/ML directory
-cd ml-services
-
 # Create virtual environment
 python -m venv venv
 
@@ -261,17 +272,26 @@ venv\Scripts\activate
 source venv/bin/activate
 
 # Install dependencies
-pip install -r requirements.txt
+pip install -r ml/requirements.txt
 
-# Run ML service
-python app.py
+# Run training or prediction scripts
+python ml/scripts/train_models.py
+python ml/scripts/predict.py
 ```
 
-### Database Setup
+### Data Setup
 
-1. Create a new database instance (PostgreSQL or MongoDB)
-2. Update the database connection string in the backend `.env` file
-3. Run database migrations (if applicable)
+1. Create a PostgreSQL database
+2. Set `DATABASE_URL` in `.env`
+3. Run Prisma migrations and seed data as needed
+4. Optionally run the ML scripts to refresh generated model artifacts
+
+### Helpful Scripts
+
+- `npm run dev` - start the Next.js app in development mode
+- `npm run build` - create a production build
+- `npm run lint` - run ESLint
+- `npm run db:seed` - seed the database with initial data
 
 ---
 
