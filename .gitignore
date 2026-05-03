@@ -22,7 +22,26 @@
 
 # misc
 .DS_Store
+Thumbs.db
+Desktop.ini
 *.pem
+*.seed
+*.patch
+*.orig
+*.rej
+*.swp
+*.swo
+
+# editor settings
+.idea/
+.vscode/
+.vscode-test/
+
+# local tooling caches
+.cache/
+.turbo/
+.eslintcache
+.parcel-cache/
 
 # debug
 npm-debug.log*
@@ -32,6 +51,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +59,23 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python / ml
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+.python-version
+ml/models/
+
+# generated local exports / reports
+batch_output.json
+build_errors.txt
+build_verify.txt
+errors.txt
+
+/src/generated/prisma

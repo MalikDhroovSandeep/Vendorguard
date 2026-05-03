@@ -1,0 +1,567 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  ADMIN
+  INTERNAL_USER
+  VENDOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum BusinessType {
+  INDIVIDUAL
+  PARTNERSHIP
+  PVT_LTD
+  LLP
+}
+
+enum KYCStatus {
+  PENDING
+  SUBMITTED
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
+enum RiskCategory {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  IN_PROGRESS
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryStatus {
+  PENDING
+  PARTIAL
+  COMPLETED
+  DELAYED
+}
+
+enum InvoiceStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+  OVERDUE
+}
+
+enum DisputeCategory {
+  DELIVERY
+  QUALITY
+  PAYMENT
+  PRICING
+  OTHER
+}
+
+enum DisputePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+enum BusinessDocType {
+  REGISTRATION_CERT
+  TRADE_LICENSE
+  UDYAM
+}
+
+enum PredictionType {
+  DELIVERY_DELAY
+  DISPUTE_RISK
+  QUALITY_ISSUE
+}
+
+enum AlertType {
+  INVOICE_ANOMALY
+  DELIVERY_PATTERN
+  DISPUTE_PATTERN
+  FRAUD_SUSPECTED
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  NEW
+  UNDER_INVESTIGATION
+  DISMISSED
+  CONFIRMED
+}
+
+enum NotificationType {
+  KYC_SUBMITTED
+  KYC_APPROVED
+  KYC_REJECTED
+  ORDER_CREATED
+  ORDER_APPROVED
+  ORDER_DELIVERED
+  INVOICE_SUBMITTED
+  INVOICE_APPROVED
+  INVOICE_PAID
+  INVOICE_REJECTED
+  DISPUTE_CREATED
+  DISPUTE_RESOLVED
+  SYSTEM_ALERT
+  RETURN_CREATED
+  RETURN_APPROVED
+  RETURN_REJECTED
+  CREDIT_NOTE_ISSUED
+}
+
+enum ReturnReason {
+  DEFECTIVE
+  DAMAGED_IN_TRANSIT
+  WRONG_ITEM
+  QUALITY_ISSUE
+  QUANTITY_MISMATCH
+  EXPIRED
+  NOT_AS_DESCRIBED
+  OTHER
+}
+
+enum ReturnStatus {
+  PENDING
+  VENDOR_REVIEW
+  APPROVED
+  REJECTED
+  IN_TRANSIT
+  RECEIVED
+  CREDIT_ISSUED
+  CLOSED
+}
+
+enum ClaimType {
+  REFUND
+  REPLACEMENT
+  CREDIT_NOTE
+  PARTIAL_REFUND
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model User {
+  id          String     @id @default(uuid())
+  email       String     @unique
+  password    String
+  name        String
+  role        UserRole
+  status      UserStatus @default(ACTIVE)
+  phone       String?
+  department  String?
+  preferences Json?      // Store notification preferences
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  vendor              Vendor?
+  createdOrders       PurchaseOrder[]  @relation("OrderCreator")
+  raisedDisputes      Dispute[]        @relation("DisputeRaiser")
+  resolvedDisputes    Dispute[]        @relation("DisputeResolver")
+  reviewedKYCs        VendorKYC[]      @relation("KYCReviewer")
+  investigatedAlerts  AnomalyAlert[]   @relation("AlertInvestigator")
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  passwordResetTokens PasswordResetToken[]
+  createdReturns      Return[]       @relation("ReturnCreator")
+  approvedReturns     Return[]       @relation("ReturnApprover")
+
+  @@map("users")
+}
+
+// Password Reset Token for forgot password flow
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+model Vendor {
+  id                  String       @id @default(uuid())
+  userId              String       @unique
+  businessName        String
+  businessType        BusinessType
+  industryCategory    String
+  businessDescription String?
+  yearEstablished     Int?
+  kycStatus           KYCStatus    @default(PENDING)
+  riskScore           Decimal?     @db.Decimal(5, 2)
+  riskCategory        RiskCategory?
+  status              VendorStatus @default(ACTIVE)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  // Relations
+  user                  User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact               VendorContact?
+  kyc                   VendorKYC?
+  purchaseOrders        PurchaseOrder[]
+  invoices              Invoice[]
+  disputes              Dispute[]
+  riskScoreHistory      VendorRiskScore[]
+  performancePredictions VendorPerformancePrediction[]
+  anomalyAlerts         AnomalyAlert[]
+  returns               Return[]
+  creditNotes           CreditNote[]
+
+  @@map("vendors")
+}
+
+model VendorContact {
+  id          String   @id @default(uuid())
+  vendorId    String   @unique
+  contactName String
+  designation String?
+  email       String
+  phone       String
+  address     String
+  city        String
+  state       String
+  pinCode     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@map("vendor_contacts")
+}
+
+model VendorKYC {
+  id                    String        @id @default(uuid())
+  vendorId              String        @unique
+  gstNumber             String?
+  panNumber             String?
+  businessDocType       BusinessDocType?
+  businessDocNumber     String?
+  businessDocAuthority  String?
+  businessDocIssueDate  DateTime?
+  submittedAt           DateTime?
+  reviewedAt            DateTime?
+  reviewedById          String?
+  rejectionReason       String?
+  
+  // Document URLs (Cloudinary)
+  gstDocument           String?       // GST certificate URL
+  panDocument           String?       // PAN card URL
+  businessDocument      String?       // Business proof document URL
+  
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Relations
+  vendor     Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  reviewedBy User?  @relation("KYCReviewer", fields: [reviewedById], references: [id])
+
+  @@map("vendor_kyc")
+}
+
+model PurchaseOrder {
+  id               String        @id @default(uuid())
+  orderNumber      String        @unique
+  vendorId         String
+  createdById      String
+  title            String
+  description      String?
+  amount           Decimal       @db.Decimal(15, 2)
+  currency         String        @default("INR")
+  status           OrderStatus   @default(DRAFT)
+  expectedDelivery DateTime?
+  actualDelivery   DateTime?
+  deliveryStatus   DeliveryStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // Relations
+  vendor    Vendor              @relation(fields: [vendorId], references: [id])
+  createdBy User                @relation("OrderCreator", fields: [createdById], references: [id])
+  items     PurchaseOrderItem[]
+  invoices  Invoice[]
+  disputes  Dispute[]
+  returns   Return[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  itemName   String
+  quantity   Int
+  unitPrice  Decimal  @db.Decimal(15, 2)
+  totalPrice Decimal  @db.Decimal(15, 2)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  order PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_order_items")
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique
+  orderId       String?
+  vendorId      String
+  amount        Decimal       @db.Decimal(15, 2)
+  taxAmount     Decimal       @db.Decimal(15, 2) @default(0)
+  totalAmount   Decimal       @db.Decimal(15, 2)
+  status        InvoiceStatus @default(PENDING)
+  dueDate       DateTime?
+  paidDate      DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  order    PurchaseOrder? @relation(fields: [orderId], references: [id])
+  vendor   Vendor         @relation(fields: [vendorId], references: [id])
+  disputes Dispute[]
+
+  @@map("invoices")
+}
+
+model Dispute {
+  id            String          @id @default(uuid())
+  disputeNumber String          @unique
+  orderId       String?
+  invoiceId     String?
+  vendorId      String
+  raisedById    String
+  category      DisputeCategory
+  priority      DisputePriority @default(MEDIUM)
+  subject       String
+  description   String?
+  amount        Decimal?        @db.Decimal(15, 2)
+  status        DisputeStatus   @default(OPEN)
+  resolution    String?
+  resolvedById  String?
+  resolvedAt    DateTime?
+  vendorResponse    String?
+  vendorRespondedAt DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  order      PurchaseOrder? @relation(fields: [orderId], references: [id])
+  invoice    Invoice?       @relation(fields: [invoiceId], references: [id])
+  vendor     Vendor         @relation(fields: [vendorId], references: [id])
+  raisedBy   User           @relation("DisputeRaiser", fields: [raisedById], references: [id])
+  resolvedBy User?          @relation("DisputeResolver", fields: [resolvedById], references: [id])
+
+  @@map("disputes")
+}
+
+model VendorRiskScore {
+  id               String       @id @default(uuid())
+  vendorId         String
+  riskScore        Decimal      @db.Decimal(5, 2)
+  riskCategory     RiskCategory
+  deliveryScore    Decimal?     @db.Decimal(5, 2)
+  disputeScore     Decimal?     @db.Decimal(5, 2)
+  paymentScore     Decimal?     @db.Decimal(5, 2)
+  fulfillmentScore Decimal?     @db.Decimal(5, 2)
+  calculatedAt     DateTime     @default(now())
+  createdAt        DateTime     @default(now())
+
+  // Relations
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@map("vendor_risk_scores")
+}
+
+model VendorPerformancePrediction {
+  id               String         @id @default(uuid())
+  vendorId         String
+  predictionType   PredictionType
+  probability      Decimal        @db.Decimal(5, 2)
+  predictionPeriod String
+  details          String?
+  predictedAt      DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+
+  // Relations
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@map("vendor_performance_predictions")
+}
+
+model AnomalyAlert {
+  id              String        @id @default(uuid())
+  vendorId        String
+  alertType       AlertType
+  severity        AlertSeverity
+  title           String
+  description     String?
+  status          AlertStatus   @default(NEW)
+  investigatedById String?
+  investigatedAt  DateTime?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  vendor         Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  investigatedBy User?  @relation("AlertInvestigator", fields: [investigatedById], references: [id])
+
+  @@map("anomaly_alerts")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  link      String?          // Optional redirect URL
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ============================================
+// RETURNS & CLAIMS
+// ============================================
+
+model Return {
+  id            String       @id @default(uuid())
+  returnNumber  String       @unique
+  orderId       String
+  vendorId      String
+  createdById   String
+  reason        ReturnReason
+  status        ReturnStatus @default(PENDING)
+  description   String?
+  totalQuantity Int
+  totalAmount   Decimal      @db.Decimal(15, 2)
+  
+  // Vendor Response
+  vendorResponse    String?
+  vendorRespondedAt DateTime?
+  
+  // Resolution
+  claimType         ClaimType?
+  approvedAmount    Decimal?     @db.Decimal(15, 2)
+  approvedById      String?
+  approvedAt        DateTime?
+  rejectionReason   String?
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  order      PurchaseOrder @relation(fields: [orderId], references: [id])
+  vendor     Vendor        @relation(fields: [vendorId], references: [id])
+  createdBy  User          @relation("ReturnCreator", fields: [createdById], references: [id])
+  approvedBy User?         @relation("ReturnApprover", fields: [approvedById], references: [id])
+  items      ReturnItem[]
+  creditNote CreditNote?
+
+  @@map("returns")
+}
+
+model ReturnItem {
+  id          String       @id @default(uuid())
+  returnId    String
+  itemName    String
+  quantity    Int
+  unitPrice   Decimal      @db.Decimal(15, 2)
+  totalPrice  Decimal      @db.Decimal(15, 2)
+  reason      ReturnReason
+  description String?
+  createdAt   DateTime     @default(now())
+
+  return Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@map("return_items")
+}
+
+model CreditNote {
+  id           String   @id @default(uuid())
+  creditNumber String   @unique
+  returnId     String   @unique
+  vendorId     String
+  amount       Decimal  @db.Decimal(15, 2)
+  notes        String?
+  issuedAt     DateTime @default(now())
+  
+  return Return @relation(fields: [returnId], references: [id])
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+
+  @@map("credit_notes")
+}

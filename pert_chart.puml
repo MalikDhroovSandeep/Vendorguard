@@ -1,0 +1,57 @@
+@startuml PERT_Chart_VendorGuard
+
+title 3.3.1 Pert Chart
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+map "**Research and Defining\nthe Project**" as T01 #90EE90 {
+  Start Day: 1 => ID: 01
+  Finish Day: 6 => Duration: 6
+}
+
+map "**Synopsis**" as T02 #90EE90 {
+  Start Day: 7 => ID: 02
+  Finish Day: 8 => Duration: 2
+}
+
+map "**Requirement Gathering\nand Feasibility**" as T03 #90EE90 {
+  Start Day: 9 => ID: 03
+  Finish Day: 12 => Duration: 4
+}
+
+map "**System Analysis**" as T04 #90EE90 {
+  Start Day: 13 => ID: 04
+  Finish Day: 16 => Duration: 4
+}
+
+map "**System Design**" as T05 #90EE90 {
+  Start Day: 17 => ID: 05
+  Finish Day: 22 => Duration: 6
+}
+
+map "**Coding the Project**" as T06 #90EE90 {
+  Start Day: 23 => ID: 06
+  Finish Day: 60 => Duration: 38
+}
+
+map "**Testing the Project**" as T07 #90EE90 {
+  Start Day: 61 => ID: 07
+  Finish Day: 66 => Duration: 6
+}
+
+map "**Deployment**" as T08 #90EE90 {
+  Start Day: 67 => ID: 08
+  Finish Day: 70 => Duration: 4
+}
+
+T01 --> T02
+T02 --> T03
+T03 --> T04
+T04 --> T05
+T05 --> T06
+T06 --> T07
+T07 --> T08
+
+@enduml
