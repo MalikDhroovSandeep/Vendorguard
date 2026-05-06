@@ -307,10 +307,4 @@ This project is developed for academic purposes as part of a final-year universi
 
 ---
 
-## Contributors
-
-- [Add team member names here]
-
 ---
-
-*VendorGuard – Empowering Procurement with AI-Driven Insights*
